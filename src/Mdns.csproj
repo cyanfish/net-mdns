@@ -30,8 +30,8 @@
 
   <ItemGroup>
     <PackageReference Include="Common.Logging" Version="3.4.1" />
-    <PackageReference Include="Makaretu.Dns.New" Version="3.0.1" />
-	<None Include="..\README.md" Pack="true" PackagePath="\"/>
+    <PackageReference Include="Makaretu.Dns" Version="2.0.1" />
+	<None Include="..\README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>
