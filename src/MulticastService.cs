@@ -460,7 +460,7 @@ namespace Makaretu.Dns
         /// </exception>
         public void SendQuery(Message msg)
         {
-            Send(msg, false);
+            Send(msg, false, false);
         }
 
         /// <summary>
@@ -511,7 +511,7 @@ namespace Makaretu.Dns
 
             answer.Truncate(maxPacketSize);
 
-            Send(answer, checkDuplicate);
+            Send(answer, checkDuplicate, true);
         }
 
         /// <summary>
@@ -581,10 +581,10 @@ namespace Makaretu.Dns
                 r.TTL = (r.TTL > maxLegacyUnicastTTL) ? maxLegacyUnicastTTL : r.TTL;
             }
 
-            Send(answer, checkDuplicate, query.RemoteEndPoint);
+            Send(answer, checkDuplicate, true, query.RemoteEndPoint);
         }
 
-        internal void Send(Message msg, bool checkDuplicate, IPEndPoint remoteEndPoint = null)
+        internal void Send(Message msg, bool checkDuplicate, bool filterAddressRecords, IPEndPoint remoteEndPoint = null)
         {
             var packet = msg.ToByteArray();
             if (packet.Length > maxPacketSize)
@@ -600,11 +600,19 @@ namespace Makaretu.Dns
             // Standard multicast reponse?
             if (remoteEndPoint == null)
             {
-                client?.SendAsync(packet).GetAwaiter().GetResult();
+                if (filterAddressRecords)
+                {
+                    client?.SendFilteredAsync(msg).GetAwaiter().GetResult();
+                }
+                else
+                {
+                    client?.SendAsync(packet).GetAwaiter().GetResult();
+                }
             }
             // Unicast response
             else
             {
+                // TODO: Get NIC
                 var unicastClient = (remoteEndPoint.Address.AddressFamily == AddressFamily.InterNetwork)
                     ? unicastClientIp4 : unicastClientIp6;
                 unicastClient.SendAsync(packet, packet.Length, remoteEndPoint).GetAwaiter().GetResult();

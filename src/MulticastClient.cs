@@ -32,7 +32,7 @@ namespace Makaretu.Dns
         static readonly IPEndPoint MdnsEndpointIp4 = new IPEndPoint(MulticastAddressIp4, MulticastPort);
 
         readonly List<UdpClient> receivers;
-        readonly ConcurrentDictionary<IPAddress, UdpClient> senders = new ConcurrentDictionary<IPAddress, UdpClient>();
+        readonly ConcurrentDictionary<IPAddressAndNIC, UdpClient> senders = new ConcurrentDictionary<IPAddressAndNIC, UdpClient>();
 
         public event EventHandler<UdpReceiveResult> MessageReceived;
 
@@ -60,16 +60,18 @@ namespace Makaretu.Dns
             }
 
             // Get the IP addresses that we should send to.
-            var addreses = nics
+            var addressesAndNics = nics
                 .SelectMany(GetNetworkInterfaceLocalAddresses)
-                .Where(a => (useIPv4 && a.AddressFamily == AddressFamily.InterNetwork)
-                    || (useIpv6 && a.AddressFamily == AddressFamily.InterNetworkV6));
-            foreach (var address in addreses)
+                .Where(a => (useIPv4 && a.Address.AddressFamily == AddressFamily.InterNetwork)
+                    || (useIpv6 && a.Address.AddressFamily == AddressFamily.InterNetworkV6));
+            foreach (var addressAndNic in addressesAndNics)
             {
-                if (senders.Keys.Contains(address))
+                // TODO: This is not quite right
+                if (senders.Keys.Contains(addressAndNic))
                 {
                     continue;
                 }
+                var address = addressAndNic.Address;
 
                 var localEndpoint = new IPEndPoint(address, MulticastPort);
                 var sender = new UdpClient(address.AddressFamily);
@@ -97,7 +99,7 @@ namespace Makaretu.Dns
 
                     receivers.Add(sender);
                     log.Debug($"Will send via {localEndpoint}");
-                    if (!senders.TryAdd(address, sender)) // Should not fail
+                    if (!senders.TryAdd(addressAndNic, sender)) // Should not fail
                     {
                         sender.Dispose();
                     }
@@ -127,17 +129,67 @@ namespace Makaretu.Dns
             {
                 try
                 {
-                    var endpoint = sender.Key.AddressFamily == AddressFamily.InterNetwork ? MdnsEndpointIp4 : MdnsEndpointIp6;
+                    var endpoint = sender.Key.Address.AddressFamily == AddressFamily.InterNetwork ? MdnsEndpointIp4 : MdnsEndpointIp6;
                     await sender.Value.SendAsync(
-                        message, message.Length, 
-                        endpoint)
-                    .ConfigureAwait(false);
+                            message, message.Length,
+                            endpoint)
+                        .ConfigureAwait(false);
                 }
                 catch (Exception e)
                 {
                     log.Error($"Sender {sender.Key} failure: {e.Message}");
                     // eat it.
                 }
+            }
+        }
+
+        public async Task SendFilteredAsync(Message message)
+        {
+            foreach (var sender in senders)
+            {
+                try
+                {
+                    var endpoint = sender.Key.Address.AddressFamily == AddressFamily.InterNetwork ? MdnsEndpointIp4 : MdnsEndpointIp6;
+                    var serializedMessage = GetFilteredMessage(message, sender.Key.Interface);
+                    await sender.Value.SendAsync(
+                            serializedMessage, serializedMessage.Length,
+                            endpoint)
+                        .ConfigureAwait(false);
+                }
+                catch (Exception e)
+                {
+                    log.Error($"Sender {sender.Key} failure: {e.Message}");
+                    // eat it.
+                }
+            }
+        }
+
+        private byte[] GetFilteredMessage(Message msg, NetworkInterface networkInterface)
+        {
+            var hostName = msg.AdditionalRecords.Concat(msg.Answers).OfType<AddressRecord>().Select(record => record.Name).FirstOrDefault();
+            if (hostName == null)
+            {
+                return msg.ToByteArray();
+            }
+
+            var allAdditional = msg.AdditionalRecords.ToList();
+            var allAnswers = msg.Answers.ToList();
+
+            try
+            {
+                var nicAddresses = networkInterface.GetIPProperties().UnicastAddresses.Select(a => a.Address).ToList();
+                msg.AdditionalRecords.RemoveAll(record =>
+                    record is AddressRecord addressRecord && !nicAddresses.Contains(addressRecord.Address));
+                msg.Answers.RemoveAll(record =>
+                    record is AddressRecord addressRecord && !nicAddresses.Contains(addressRecord.Address));
+                return msg.ToByteArray();
+            }
+            finally
+            {
+                msg.AdditionalRecords.Clear();
+                msg.AdditionalRecords.AddRange(allAdditional);
+                msg.Answers.Clear();
+                msg.Answers.AddRange(allAnswers);
             }
         }
 
@@ -164,13 +216,13 @@ namespace Makaretu.Dns
             });
         }
 
-        IEnumerable<IPAddress> GetNetworkInterfaceLocalAddresses(NetworkInterface nic)
+        IEnumerable<IPAddressAndNIC> GetNetworkInterfaceLocalAddresses(NetworkInterface nic)
         {
             return nic
                 .GetIPProperties()
                 .UnicastAddresses
-                .Select(x => x.Address)
-                .Where(x => x.AddressFamily != AddressFamily.InterNetworkV6 || x.IsIPv6LinkLocal)
+                .Select(x => new IPAddressAndNIC { Address = x.Address, Interface = nic })
+                .Where(x => x.Address.AddressFamily != AddressFamily.InterNetworkV6 || x.Address.IsIPv6LinkLocal)
                 ;
         }
 
@@ -218,5 +270,12 @@ namespace Makaretu.Dns
         }
 
         #endregion
+
+        private class IPAddressAndNIC
+        {
+            public IPAddress Address { get; set; }
+
+            public NetworkInterface Interface { get; set; }
+        }
     }
 }
