@@ -17,6 +17,8 @@ namespace Makaretu.Dns
             MulticastService.ReferenceEquals(null, null);
         }
 
+        private DomainName hostName;
+
         /// <summary>
         ///   Creates a new instance of the <see cref="ServiceProfile"/> class.
         /// </summary>
@@ -124,7 +126,22 @@ namespace Makaretu.Dns
         ///   This can be used to query the address records (A and AAAA)
         ///   of the service instance.
         /// </remarks>
-        public DomainName HostName { get; set; }
+        public DomainName HostName
+        {
+            get => hostName;
+            set
+            {
+                hostName = value;
+                foreach (var srvRecord in Resources.OfType<SRVRecord>())
+                {
+                    srvRecord.Target = hostName;
+                }
+                foreach (var addressRecord in Resources.OfType<AddressRecord>())
+                {
+                    addressRecord.Name = hostName;
+                }
+            }
+        }
 
         /// <summary>
         ///   The instance name, service name and domain.
