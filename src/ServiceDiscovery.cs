@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Common.Logging;
 using Makaretu.Dns.Resolving;
@@ -459,6 +460,7 @@ namespace Makaretu.Dns
                 ;
             }
 
+            Thread.Sleep(new Random().Next(20, 120));
             if (QU)
             {
                 // TODO: Send a Unicast response if required.
