@@ -66,7 +66,6 @@ namespace Makaretu.Dns
                     || (useIpv6 && a.Address.AddressFamily == AddressFamily.InterNetworkV6));
             foreach (var addressAndNic in addressesAndNics)
             {
-                // TODO: This is not quite right
                 if (senders.Keys.Contains(addressAndNic))
                 {
                     continue;
@@ -178,10 +177,20 @@ namespace Makaretu.Dns
             try
             {
                 var nicAddresses = networkInterface.GetIPProperties().UnicastAddresses.Select(a => a.Address).ToList();
-                msg.AdditionalRecords.RemoveAll(record =>
-                    record is AddressRecord addressRecord && !nicAddresses.Contains(addressRecord.Address));
-                msg.Answers.RemoveAll(record =>
-                    record is AddressRecord addressRecord && !nicAddresses.Contains(addressRecord.Address));
+                if (msg.AdditionalRecords.RemoveAll(record => record is AddressRecord) > 0)
+                {
+                    foreach (var addr in nicAddresses)
+                    {
+                        msg.AdditionalRecords.Add(AddressRecord.Create(hostName, addr));
+                    }
+                }
+                if (msg.Answers.RemoveAll(record => record is AddressRecord) > 0)
+                {
+                    foreach (var addr in nicAddresses)
+                    {
+                        msg.Answers.Add(AddressRecord.Create(hostName, addr));
+                    }
+                }
                 return msg.ToByteArray();
             }
             finally

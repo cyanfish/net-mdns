@@ -33,6 +33,7 @@ namespace Makaretu.Dns
         private static readonly ILog log = LogManager.GetLogger(typeof(MulticastService));
 
         private List<NetworkInterface> knownNics = new List<NetworkInterface>();
+        private HashSet<IPAddress> knownAddresses = new HashSet<IPAddress>();
         private int maxPacketSize;
 
         /// <summary>
@@ -244,6 +245,7 @@ namespace Makaretu.Dns
             maxPacketSize = maxDatagramSize - packetOverhead;
 
             knownNics.Clear();
+            knownAddresses.Clear();
 
             FindNetworkInterfaces();
         }
@@ -280,6 +282,7 @@ namespace Makaretu.Dns
             try
             {
                 var currentNics = GetNetworkInterfaces().ToList();
+                var currentAddresses = new HashSet<IPAddress>();
 
                 var newNics = new List<NetworkInterface>();
                 var oldNics = new List<NetworkInterface>();
@@ -297,6 +300,10 @@ namespace Makaretu.Dns
                 foreach (var nic in currentNics.Where(nic => !knownNics.Any(k => k.Id == nic.Id)))
                 {
                     newNics.Add(nic);
+                    foreach (var addrInfo in nic.GetIPProperties().UnicastAddresses)
+                    {
+                        currentAddresses.Add(addrInfo.Address);
+                    }
 
                     if (log.IsDebugEnabled)
                     {
@@ -304,10 +311,13 @@ namespace Makaretu.Dns
                     }
                 }
 
+                bool hasChangedAddresses = !currentAddresses.SetEquals(knownAddresses);
+
                 knownNics = currentNics;
+                knownAddresses = currentAddresses;
 
                 // Only create client if something has change.
-                if (newNics.Any() || oldNics.Any())
+                if (newNics.Any() || oldNics.Any() || hasChangedAddresses)
                 {
                     client?.Dispose();
                     client = new MulticastClient(UseIpv4, UseIpv6, networkInterfacesFilter?.Invoke(knownNics) ?? knownNics);
