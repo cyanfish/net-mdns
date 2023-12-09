@@ -7,7 +7,6 @@ using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
-using Common.Logging;
 
 namespace Makaretu.Dns
 {
@@ -30,7 +29,6 @@ namespace Makaretu.Dns
         private const int maxDatagramSize = Message.MaxLength;
 
         private static readonly TimeSpan maxLegacyUnicastTTL = TimeSpan.FromSeconds(10);
-        private static readonly ILog log = LogManager.GetLogger(typeof(MulticastService));
 
         private List<NetworkInterface> knownNics = new List<NetworkInterface>();
         private HashSet<IPAddress> knownAddresses = new HashSet<IPAddress>();
@@ -277,8 +275,6 @@ namespace Makaretu.Dns
 
         private void FindNetworkInterfaces()
         {
-            log.Debug("Finding network interfaces");
-
             try
             {
                 var currentNics = GetNetworkInterfaces().ToList();
@@ -290,11 +286,6 @@ namespace Makaretu.Dns
                 foreach (var nic in knownNics.Where(k => !currentNics.Any(n => k.Id == n.Id)))
                 {
                     oldNics.Add(nic);
-
-                    if (log.IsDebugEnabled)
-                    {
-                        log.Debug($"Removed nic '{nic.Name}'.");
-                    }
                 }
 
                 foreach (var nic in currentNics.Where(nic => !knownNics.Any(k => k.Id == nic.Id)))
@@ -303,11 +294,6 @@ namespace Makaretu.Dns
                     foreach (var addrInfo in nic.GetIPProperties().UnicastAddresses)
                     {
                         currentAddresses.Add(addrInfo.Address);
-                    }
-
-                    if (log.IsDebugEnabled)
-                    {
-                        log.Debug($"Found nic '{nic.Name}'.");
                     }
                 }
 
@@ -346,9 +332,9 @@ namespace Makaretu.Dns
                     NetworkChange.NetworkAddressChanged += OnNetworkAddressChanged;
                 }
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                log.Error("FindNics failed", e);
+                // Failed
             }
         }
 
@@ -665,7 +651,6 @@ namespace Makaretu.Dns
             }
             catch (Exception e)
             {
-                log.Warn("Received malformed message", e);
                 MalformedMessage?.Invoke(this, result.Buffer);
                 return; // eat the exception
             }
@@ -689,7 +674,6 @@ namespace Makaretu.Dns
             }
             catch (Exception e)
             {
-                log.Error("Receive handler failed", e);
                 // eat the exception
             }
         }

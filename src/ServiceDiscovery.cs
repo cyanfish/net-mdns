@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Common.Logging;
 using Makaretu.Dns.Resolving;
 
 namespace Makaretu.Dns
@@ -15,7 +14,6 @@ namespace Makaretu.Dns
     /// <seealso href="https://tools.ietf.org/html/rfc6763">RFC 6763 DNS-Based Service Discovery</seealso>
     public class ServiceDiscovery : IServiceDiscovery
     {
-        private static readonly ILog log = LogManager.GetLogger(typeof(ServiceDiscovery));
         private static readonly DomainName LocalDomain = new DomainName("local");
         private static readonly DomainName SubName = new DomainName("_sub");
         private static readonly ushort transaction = (ushort)new Random().Next(10000, int.MaxValue);
@@ -362,14 +360,6 @@ namespace Makaretu.Dns
         private void OnAnswer(object sender, MessageEventArgs e)
         {
             var msg = e.Message;
-            if (log.IsDebugEnabled)
-            {
-                log.Debug($"Answer from {e.RemoteEndPoint}");
-            }
-            if (log.IsTraceEnabled)
-            {
-                log.Trace(msg);
-            }
 
             // Any DNS-SD answers?
             if (msg.Id == transaction)
@@ -413,15 +403,6 @@ namespace Makaretu.Dns
         private void OnQuery(object sender, MessageEventArgs e)
         {
             var request = e.Message;
-
-            if (log.IsDebugEnabled)
-            {
-                log.Debug($"Query from {e.RemoteEndPoint}");
-            }
-            if (log.IsTraceEnabled)
-            {
-                log.Trace(request);
-            }
 
             // Determine if this query is requesting a unicast response
             // and normalise the Class.
@@ -471,14 +452,6 @@ namespace Makaretu.Dns
                 Mdns.SendAnswer(response, e);
             }
 
-            if (log.IsDebugEnabled)
-            {
-                log.Debug($"Sending answer");
-            }
-            if (log.IsTraceEnabled)
-            {
-                log.Trace(response);
-            }
             //Console.WriteLine($"Response time {(DateTime.Now - request.CreationTime).TotalMilliseconds}ms");
         }
 
