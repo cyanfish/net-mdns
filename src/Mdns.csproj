@@ -10,22 +10,16 @@
     <DebugType>full</DebugType>
     <DisableImplicitNuGetFallbackFolder>true</DisableImplicitNuGetFallbackFolder>
     
-    <AssemblyVersion>0.31</AssemblyVersion>
-    <Version>0.31</Version>
-    
     <!-- Nuget specs -->
-    <PackageId>Makaretu.Dns.Multicast.New</PackageId>
-    <Authors>Richard Schneider, jdomnitz</Authors>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageId>NAPS2.Mdns</PackageId>
+    <Authors>Ben Olden-Cooligan</Authors>
     <Title>Multicast DNS</Title>
-    <Description>A simple Multicast Domain Name Service based on RFC 6762.  Can be used as both a client (sending queries) or a server (responding to queries).</Description>
-    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-    <PackageReleaseNotes>https://github.com/jdomnitz/net-mdns/releases</PackageReleaseNotes>
-    <Copyright>© 2018-2019 Richard Schneider, jdomnitz</Copyright>
-    <PackageTags>multicast mdns dns zeroconf</PackageTags>
-    <IncludeSymbols>True</IncludeSymbols>
-    <PackageProjectUrl>https://github.com/jdomnitz/net-mdns</PackageProjectUrl>
+    <Description>Fork of Makaretu.Dns.Multicast.New for NAPS2.Escl</Description>
+    <PackageTags>naps2 mdns</PackageTags>
+    <PackageProjectUrl>https://github.com/cyanfish/net-mdns</PackageProjectUrl>
 	<PackageLicenseExpression>MIT</PackageLicenseExpression>
-	<PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageVersion>1.0.1</PackageVersion>
   </PropertyGroup>
 
   <ItemGroup>
